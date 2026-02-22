@@ -31,6 +31,7 @@ interface AuthState {
   isPandit: boolean;
   isAdmin: boolean;
   isLoading: boolean;
+  isHydrated: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (data: { name: string; email: string; phone?: string; password: string; role: UserRole }) => Promise<void>;
@@ -49,6 +50,7 @@ export const useAuthStore = create<AuthState>()(
       isPandit: false,
       isAdmin: false,
       isLoading: false,
+      isHydrated: false,
       error: null,
 
       login: async (email: string, password: string) => {
@@ -67,6 +69,7 @@ export const useAuthStore = create<AuthState>()(
             isPandit: user.role === 'pandit',
             isAdmin: user.role === 'admin',
             isLoading: false,
+            isHydrated: true,
           });
         } catch (e) {
           console.error('[Auth] Login failed:', e);
@@ -98,6 +101,7 @@ export const useAuthStore = create<AuthState>()(
             isPandit: user.role === 'pandit',
             isAdmin: user.role === 'admin',
             isLoading: false,
+            isHydrated: true,
           });
         } catch (e) {
           console.error('[Auth] Registration failed:', e);
@@ -125,6 +129,7 @@ export const useAuthStore = create<AuthState>()(
             isPandit: user.role === 'pandit',
             isAdmin: user.role === 'admin',
             isLoading: false,
+            isHydrated: true,
           });
         } catch (e) {
           console.error('[Auth] Google sign-in failed:', e);
@@ -160,6 +165,19 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+        isPandit: state.isPandit,
+        isAdmin: state.isAdmin,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          console.log('[Auth] Rehydrated, isAuthenticated:', state.isAuthenticated);
+          state.isHydrated = true;
+        }
+      },
     }
   )
 );

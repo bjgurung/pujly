@@ -52,10 +52,17 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isHydrated } = useAuthStore();
 
   useEffect(() => {
+    if (!isHydrated) {
+      console.log('[Auth] Waiting for store hydration...');
+      return;
+    }
+    
     const inAuthGroup = (segments[0] as string) === '(auth)';
+    console.log('[Auth] Navigation guard - isAuthenticated:', isAuthenticated, 'inAuthGroup:', inAuthGroup);
+    
     if (!isAuthenticated && !inAuthGroup) {
       console.log('[Auth] Not authenticated, redirecting to welcome');
       router.replace('/(auth)/welcome' as any);
@@ -63,7 +70,7 @@ function RootLayoutNav() {
       console.log('[Auth] Authenticated, redirecting to home');
       router.replace('/(tabs)/(home)' as any);
     }
-  }, [isAuthenticated, segments]);
+  }, [isAuthenticated, isHydrated, segments]);
 
   return (
     <Stack

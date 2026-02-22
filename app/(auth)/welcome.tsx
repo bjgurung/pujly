@@ -45,9 +45,11 @@ export default function WelcomeScreen() {
   const handleGoogleSignIn = async (accessToken: string) => {
     setGoogleLoading(true);
     try {
+      console.log('[Welcome] Starting Google sign-in with token');
       await googleSignIn(accessToken, 'user');
-      router.replace('/(tabs)/(home)' as any);
-    } catch {
+      console.log('[Welcome] Google sign-in completed, navigation will be handled by RootLayoutNav');
+    } catch (e) {
+      console.error('[Welcome] Google sign-in error:', e);
       Alert.alert('Error', 'Google sign-in failed. Please try again.');
     } finally {
       setGoogleLoading(false);

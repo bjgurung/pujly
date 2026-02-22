@@ -16,6 +16,8 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const [queryClient] = useState(() => new QueryClient());
+
   const [loaded, error] = useFonts({
     ...FontAwesome.font,
   });
@@ -36,8 +38,6 @@ export default function RootLayout() {
   if (!loaded) {
     return null;
   }
-
-  const [queryClient] = useState(() => new QueryClient());
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>

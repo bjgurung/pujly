@@ -1,15 +1,53 @@
-import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import Button from '@/components/Button';
 import { colors } from '@/constants/colors';
+import { useAuthStore } from '@/store/auth-store';
+
+if (Platform.OS !== 'web') {
+  WebBrowser.maybeCompleteAuthSession();
+}
 
 const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { googleSignIn } = useAuthStore();
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
+    scopes: ['profile', 'email'],
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        handleGoogleSignIn(authentication.accessToken);
+      }
+    } else if (response?.type === 'error') {
+      console.error('[Welcome] Google auth error:', response.error);
+      setGoogleLoading(false);
+    }
+  }, [response]);
+
+  const handleGoogleSignIn = async (accessToken: string) => {
+    setGoogleLoading(true);
+    try {
+      await googleSignIn(accessToken, 'user');
+      router.replace('/(tabs)/(home)' as any);
+    } catch {
+      Alert.alert('Error', 'Google sign-in failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -35,6 +73,21 @@ export default function WelcomeScreen() {
           <Text style={styles.subheading}>Book ceremonies, purchase puja items, and get spiritual guidance — all in one place.</Text>
 
           <View style={styles.buttonGroup}>
+            <TouchableOpacity
+              style={styles.googleBtn}
+              onPress={() => {
+                setGoogleLoading(true);
+                promptAsync();
+              }}
+              disabled={!request || googleLoading}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={styles.googleBtnText}>
+                {googleLoading ? 'Signing in...' : 'Continue with Google'}
+              </Text>
+            </TouchableOpacity>
+
             <Button
               title="Get Started"
               onPress={() => router.push('/(auth)/role-select' as any)}
@@ -92,7 +145,7 @@ const styles = StyleSheet.create({
   },
   appName: {
     fontSize: 36,
-    fontWeight: '800',
+    fontWeight: '800' as const,
     color: colors.white,
     letterSpacing: -1,
   },
@@ -112,7 +165,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '700' as const,
     color: colors.text,
     lineHeight: 30,
     letterSpacing: -0.3,
@@ -124,8 +177,30 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   buttonGroup: {
-    marginTop: 28,
-    gap: 8,
+    marginTop: 24,
+    gap: 10,
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  googleIcon: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: '#4285F4',
+  },
+  googleBtnText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: colors.text,
   },
   getStartedBtn: {
     width: '100%',

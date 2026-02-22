@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { trpcClient } from '@/lib/trpc';
 
 export type UserRole = 'user' | 'pandit' | 'admin';
 
@@ -25,6 +26,7 @@ export interface User {
 
 interface AuthState {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
   isPandit: boolean;
   isAdmin: boolean;
@@ -32,6 +34,7 @@ interface AuthState {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (data: { name: string; email: string; phone?: string; password: string; role: UserRole }) => Promise<void>;
+  googleSignIn: (accessToken: string, role?: UserRole) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => Promise<void>;
   clearError: () => void;
@@ -41,6 +44,7 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      token: null,
       isAuthenticated: false,
       isPandit: false,
       isAdmin: false,
@@ -50,23 +54,22 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
-          await new Promise(resolve => setTimeout(resolve, 800));
+          const result = await trpcClient.auth.emailLogin.mutate({ email, password });
+          console.log('[Auth] Login success:', result.user.email);
           const user: User = {
-            id: '1',
-            name: 'Demo User',
-            email,
-            role: 'user',
+            ...result.user,
             location: 'Delhi NCR',
-            createdAt: new Date().toISOString(),
           };
           set({
             user,
+            token: result.token,
             isAuthenticated: true,
             isPandit: user.role === 'pandit',
             isAdmin: user.role === 'admin',
             isLoading: false,
           });
         } catch (e) {
+          console.error('[Auth] Login failed:', e);
           set({ error: 'Login failed. Please try again.', isLoading: false });
           throw e;
         }
@@ -75,24 +78,57 @@ export const useAuthStore = create<AuthState>()(
       register: async (data) => {
         set({ isLoading: true, error: null });
         try {
-          await new Promise(resolve => setTimeout(resolve, 800));
-          const user: User = {
-            id: Date.now().toString(),
+          const result = await trpcClient.auth.emailRegister.mutate({
             name: data.name,
             email: data.email,
             phone: data.phone,
+            password: data.password,
             role: data.role,
-            createdAt: new Date().toISOString(),
+          });
+          console.log('[Auth] Register success:', result.user.email);
+          const user: User = {
+            ...result.user,
+            phone: data.phone,
+            location: 'Delhi NCR',
           };
           set({
             user,
+            token: result.token,
             isAuthenticated: true,
             isPandit: user.role === 'pandit',
             isAdmin: user.role === 'admin',
             isLoading: false,
           });
         } catch (e) {
+          console.error('[Auth] Registration failed:', e);
           set({ error: 'Registration failed. Please try again.', isLoading: false });
+          throw e;
+        }
+      },
+
+      googleSignIn: async (accessToken: string, role: UserRole = 'user') => {
+        set({ isLoading: true, error: null });
+        try {
+          const result = await trpcClient.auth.googleSignIn.mutate({
+            accessToken,
+            role,
+          });
+          console.log('[Auth] Google sign-in success:', result.user.email);
+          const user: User = {
+            ...result.user,
+            location: 'Delhi NCR',
+          };
+          set({
+            user,
+            token: result.token,
+            isAuthenticated: true,
+            isPandit: user.role === 'pandit',
+            isAdmin: user.role === 'admin',
+            isLoading: false,
+          });
+        } catch (e) {
+          console.error('[Auth] Google sign-in failed:', e);
+          set({ error: 'Google sign-in failed. Please try again.', isLoading: false });
           throw e;
         }
       },
@@ -100,8 +136,10 @@ export const useAuthStore = create<AuthState>()(
       clearError: () => set({ error: null }),
 
       logout: () => {
+        console.log('[Auth] Logging out');
         set({
           user: null,
+          token: null,
           isAuthenticated: false,
           isPandit: false,
           isAdmin: false,

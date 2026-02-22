@@ -1,21 +1,64 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, User, Mail, Phone, Lock } from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import { colors } from '@/constants/colors';
 import { useAuthStore, UserRole } from '@/store/auth-store';
 
+if (Platform.OS !== 'web') {
+  WebBrowser.maybeCompleteAuthSession();
+}
+
 export default function RegisterScreen() {
   const router = useRouter();
   const { role } = useLocalSearchParams<{ role?: string }>();
-  const { register, isLoading } = useAuthStore();
+  const { register, googleSignIn, isLoading } = useAuthStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const selectedRole = (role as UserRole) || 'user';
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
+    scopes: ['profile', 'email'],
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        handleGoogleRegister(authentication.accessToken);
+      }
+    } else if (response?.type === 'error') {
+      console.error('[Register] Google auth error:', response.error);
+      setGoogleLoading(false);
+      Alert.alert('Error', 'Google sign-in failed. Please try again.');
+    }
+  }, [response]);
+
+  const handleGoogleRegister = async (accessToken: string) => {
+    setGoogleLoading(true);
+    try {
+      await googleSignIn(accessToken, selectedRole);
+      if (selectedRole === 'pandit') {
+        router.replace('/pandit-onboarding' as any);
+      } else {
+        router.replace('/(tabs)/(home)' as any);
+      }
+    } catch {
+      Alert.alert('Error', 'Google sign-in failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleRegister = async () => {
     if (!name || !email || !password) {
@@ -28,9 +71,9 @@ export default function RegisterScreen() {
         email,
         phone,
         password,
-        role: (role as UserRole) || 'user',
+        role: selectedRole,
       });
-      if (role === 'pandit') {
+      if (selectedRole === 'pandit') {
         router.replace('/pandit-onboarding' as any);
       } else {
         router.replace('/(tabs)/(home)' as any);
@@ -50,8 +93,29 @@ export default function RegisterScreen() {
         <View style={styles.content}>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>
-            {role === 'pandit' ? 'Register as a Pandit' : 'Join as a Devotee'}
+            {selectedRole === 'pandit' ? 'Register as a Pandit' : 'Join as a Devotee'}
           </Text>
+
+          <TouchableOpacity
+            style={styles.googleBtn}
+            onPress={() => {
+              setGoogleLoading(true);
+              promptAsync();
+            }}
+            disabled={!request || googleLoading || isLoading}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.googleIcon}>G</Text>
+            <Text style={styles.googleBtnText}>
+              {googleLoading ? 'Signing up...' : 'Continue with Google'}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
           <View style={styles.form}>
             <Input
@@ -125,7 +189,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: '700' as const,
     color: colors.text,
     letterSpacing: -0.5,
   },
@@ -134,8 +198,47 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     marginTop: 6,
   },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginTop: 24,
+    gap: 12,
+  },
+  googleIcon: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: '#4285F4',
+  },
+  googleBtnText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: colors.text,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    fontSize: 13,
+    color: colors.textMuted,
+    fontWeight: '500' as const,
+  },
   form: {
-    marginTop: 28,
+    gap: 0,
   },
   registerBtn: {
     width: '100%',
@@ -153,6 +256,6 @@ const styles = StyleSheet.create({
   loginLink: {
     fontSize: 14,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '600' as const,
   },
 });

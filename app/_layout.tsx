@@ -2,8 +2,10 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { trpc, trpcClient } from "@/lib/trpc";
 import { colors } from "@/constants/colors";
 
 export const unstable_settings = {
@@ -34,11 +36,15 @@ export default function RootLayout() {
     return null;
   }
 
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
-    <>
-      <StatusBar style="dark" />
-      <RootLayoutNav />
-    </>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <StatusBar style="dark" />
+        <RootLayoutNav />
+      </QueryClientProvider>
+    </trpc.Provider>
   );
 }
 

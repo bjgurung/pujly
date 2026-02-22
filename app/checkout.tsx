@@ -1,30 +1,28 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MapPin, CreditCard, ChevronRight } from 'lucide-react-native';
+import { MapPin, CreditCard, ChevronRight, ShieldCheck } from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { colors } from '@/constants/colors';
 import { useCartStore } from '@/store/cart-store';
 import { useOrderStore } from '@/store/order-store';
+import { useAuthStore } from '@/store/auth-store';
+import { trpcClient } from '@/lib/trpc';
 import Button from '@/components/Button';
-
-const paymentMethods = [
-  { id: 'upi', label: 'UPI' },
-  { id: 'card', label: 'Credit/Debit Card' },
-  { id: 'cod', label: 'Cash on Delivery' },
-];
 
 export default function CheckoutScreen() {
   const router = useRouter();
   const { items, getCartTotal, clearCart } = useCartStore();
-  const { addOrder, getDefaultAddress, addresses } = useOrderStore();
-  const [selectedPayment, setSelectedPayment] = useState('upi');
+  const { addOrder, getDefaultAddress } = useOrderStore();
+  const { user } = useAuthStore();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const total = getCartTotal();
   const deliveryCharge = total > 999 ? 0 : 99;
   const grandTotal = total + deliveryCharge;
   const defaultAddress = getDefaultAddress();
 
-  const handlePlaceOrder = () => {
+  const handleStripeCheckout = async () => {
     if (!defaultAddress) {
       Alert.alert('Address Required', 'Please add a delivery address', [
         { text: 'Add Address', onPress: () => router.push('/address/add' as any) },
@@ -32,15 +30,97 @@ export default function CheckoutScreen() {
       return;
     }
 
-    const orderId = addOrder({
+    setIsProcessing(true);
+    console.log('[Checkout] Starting Stripe checkout for', items.length, 'items');
+
+    try {
+      const stripeItems = items.map((item) => ({
+        name: item.product.name,
+        price: item.product.discountedPrice || item.product.price,
+        quantity: item.quantity,
+        image: item.product.images?.[0],
+      }));
+
+      const result = await trpcClient.payments.createCheckoutSession.mutate({
+        items: stripeItems,
+        deliveryCharge,
+        customerEmail: user?.email,
+        metadata: {
+          userId: user?.id || 'guest',
+          addressId: defaultAddress.id,
+        },
+      });
+
+      console.log('[Checkout] Stripe session created:', result.sessionId);
+
+      if (result.url) {
+        const browserResult = await WebBrowser.openBrowserAsync(result.url, {
+          dismissButtonStyle: 'close',
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
+
+        console.log('[Checkout] Browser result:', browserResult.type);
+
+        if (browserResult.type === 'cancel' || browserResult.type === 'dismiss') {
+          try {
+            const status = await trpcClient.payments.getPaymentStatus.query({
+              sessionId: result.sessionId,
+            });
+
+            if (status.status === 'paid') {
+              handlePaymentSuccess();
+              return;
+            }
+          } catch (e) {
+            console.log('[Checkout] Could not verify payment status:', e);
+          }
+
+          Alert.alert(
+            'Payment',
+            'Did you complete the payment?',
+            [
+              {
+                text: 'No, cancel',
+                style: 'cancel',
+              },
+              {
+                text: 'Yes, I paid',
+                onPress: async () => {
+                  try {
+                    const status = await trpcClient.payments.getPaymentStatus.query({
+                      sessionId: result.sessionId,
+                    });
+                    if (status.status === 'paid') {
+                      handlePaymentSuccess();
+                    } else {
+                      Alert.alert('Payment Pending', 'Your payment is still being processed. Please check your orders later.');
+                    }
+                  } catch {
+                    handlePaymentSuccess();
+                  }
+                },
+              },
+            ]
+          );
+        }
+      }
+    } catch (e) {
+      console.error('[Checkout] Stripe checkout error:', e);
+      Alert.alert('Payment Error', 'Failed to start payment. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    addOrder({
       items,
       total: grandTotal,
-      address: defaultAddress,
-      paymentMethod: selectedPayment,
+      address: defaultAddress!,
+      paymentMethod: 'stripe',
       status: 'pending',
       estimatedDelivery: '3-5 business days',
     });
-
     clearCart();
     router.replace('/order-success' as any);
   };
@@ -76,51 +156,61 @@ export default function CheckoutScreen() {
             <View key={item.product.id} style={styles.orderItem}>
               <Text style={styles.orderItemName} numberOfLines={1}>{item.product.name} x{item.quantity}</Text>
               <Text style={styles.orderItemPrice}>
-                ₹{((item.product.discountedPrice || item.product.price) * item.quantity).toLocaleString()}
+                ${((item.product.discountedPrice || item.product.price) * item.quantity).toFixed(2)}
               </Text>
             </View>
           ))}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
-          {paymentMethods.map((method) => (
-            <TouchableOpacity
-              key={method.id}
-              style={[styles.paymentOption, selectedPayment === method.id && styles.paymentOptionActive]}
-              onPress={() => setSelectedPayment(method.id)}
-            >
-              <CreditCard size={18} color={selectedPayment === method.id ? colors.primary : colors.textMuted} />
-              <Text style={[styles.paymentLabel, selectedPayment === method.id && styles.paymentLabelActive]}>
-                {method.label}
-              </Text>
-              <View style={[styles.radio, selectedPayment === method.id && styles.radioActive]}>
-                {selectedPayment === method.id && <View style={styles.radioDot} />}
-              </View>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.paymentHeader}>
+            <CreditCard size={20} color={colors.primary} />
+            <Text style={styles.sectionTitle}>Payment</Text>
+          </View>
+          <View style={styles.stripeCard}>
+            <View style={styles.stripeInfo}>
+              <Text style={styles.stripeLogo}>stripe</Text>
+              <Text style={styles.stripeSubtext}>Secure payment via Stripe</Text>
+            </View>
+            <ShieldCheck size={20} color={colors.success} />
+          </View>
+          <Text style={styles.paymentNote}>
+            You'll be redirected to Stripe's secure checkout to complete your payment.
+          </Text>
         </View>
 
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>₹{total.toLocaleString()}</Text>
+            <Text style={styles.summaryValue}>${total.toFixed(2)}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Delivery</Text>
             <Text style={[styles.summaryValue, deliveryCharge === 0 && styles.freeText]}>
-              {deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}
+              {deliveryCharge === 0 ? 'FREE' : `$${deliveryCharge.toFixed(2)}`}
             </Text>
           </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>₹{grandTotal.toLocaleString()}</Text>
+            <Text style={styles.totalValue}>${grandTotal.toFixed(2)}</Text>
           </View>
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button title={`Pay ₹${grandTotal.toLocaleString()}`} onPress={handlePlaceOrder} size="large" />
+        {isProcessing ? (
+          <View style={styles.processingContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.processingText}>Preparing checkout...</Text>
+          </View>
+        ) : (
+          <Button
+            title={`Pay $${grandTotal.toFixed(2)}`}
+            onPress={handleStripeCheckout}
+            size="large"
+            disabled={items.length === 0}
+          />
+        )}
       </View>
     </View>
   );
@@ -152,11 +242,11 @@ const styles = StyleSheet.create({
   addressLabel: {
     fontSize: 12,
     color: colors.textMuted,
-    fontWeight: '500',
+    fontWeight: '500' as const,
   },
   addressName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: colors.text,
     marginTop: 2,
   },
@@ -168,7 +258,7 @@ const styles = StyleSheet.create({
   addAddressText: {
     fontSize: 14,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     marginTop: 4,
   },
   section: {
@@ -177,11 +267,16 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 10,
   },
+  paymentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '700' as const,
     color: colors.text,
-    marginBottom: 4,
   },
   orderItem: {
     flexDirection: 'row',
@@ -196,48 +291,37 @@ const styles = StyleSheet.create({
   },
   orderItemPrice: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: colors.text,
   },
-  paymentOption: {
+  stripeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    justifyContent: 'space-between',
+    backgroundColor: '#F6F9FC',
     borderRadius: 12,
-    backgroundColor: colors.backgroundLight,
-    gap: 12,
-  },
-  paymentOptionActive: {
-    backgroundColor: colors.primaryLight,
+    padding: 16,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: '#E3E8EE',
   },
-  paymentLabel: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.textLight,
+  stripeInfo: {
+    gap: 2,
   },
-  paymentLabelActive: {
-    color: colors.text,
-    fontWeight: '600',
+  stripeLogo: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    color: '#635BFF',
+    fontStyle: 'italic',
+    letterSpacing: -0.5,
   },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  stripeSubtext: {
+    fontSize: 12,
+    color: '#6B7294',
   },
-  radioActive: {
-    borderColor: colors.primary,
-  },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
+  paymentNote: {
+    fontSize: 12,
+    color: colors.textMuted,
+    lineHeight: 18,
   },
   summaryCard: {
     backgroundColor: colors.white,
@@ -255,12 +339,12 @@ const styles = StyleSheet.create({
   },
   summaryValue: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '500' as const,
     color: colors.text,
   },
   freeText: {
     color: colors.success,
-    fontWeight: '600',
+    fontWeight: '600' as const,
   },
   totalRow: {
     borderTopWidth: 1,
@@ -269,12 +353,12 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '700' as const,
     color: colors.text,
   },
   totalValue: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '700' as const,
     color: colors.primary,
   },
   footer: {
@@ -282,5 +366,17 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopWidth: 0.5,
     borderTopColor: colors.border,
+  },
+  processingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 10,
+  },
+  processingText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: colors.textLight,
   },
 });

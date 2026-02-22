@@ -172,11 +172,12 @@ export const useAuthStore = create<AuthState>()(
         isPandit: state.isPandit,
         isAdmin: state.isAdmin,
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          console.log('[Auth] Rehydrated, isAuthenticated:', state.isAuthenticated);
-          state.isHydrated = true;
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('[Auth] Rehydration error:', error);
         }
+        console.log('[Auth] Rehydrated, isAuthenticated:', state?.isAuthenticated);
+        useAuthStore.setState({ isHydrated: true });
       },
     }
   )

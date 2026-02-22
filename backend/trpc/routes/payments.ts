@@ -1,14 +1,86 @@
-import * as z from "zod";
+import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../create-context";
 
-const getStripe = async () => {
-  const StripeModule = await import("stripe");
-  const Stripe = StripeModule.default;
+const getStripeKey = () => {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) {
     throw new Error("STRIPE_SECRET_KEY is not set");
   }
-  return new Stripe(key, { apiVersion: "2026-01-28.clover" });
+  return key;
+};
+
+const stripeRequest = async (endpoint: string, body: Record<string, string>) => {
+  const key = getStripeKey();
+  const response = await fetch(`https://api.stripe.com/v1/${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${key}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams(body).toString(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    console.error("[Stripe] API error:", JSON.stringify(error));
+    throw new Error(error?.error?.message || "Stripe API error");
+  }
+
+  return response.json();
+};
+
+const stripeGet = async (endpoint: string) => {
+  const key = getStripeKey();
+  const response = await fetch(`https://api.stripe.com/v1/${endpoint}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${key}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    console.error("[Stripe] API error:", JSON.stringify(error));
+    throw new Error(error?.error?.message || "Stripe API error");
+  }
+
+  return response.json();
+};
+
+const buildCheckoutParams = (
+  lineItems: Array<{ name: string; price: number; quantity: number; image?: string }>,
+  successUrl: string,
+  cancelUrl: string,
+  customerEmail?: string,
+  metadata?: Record<string, string>,
+) => {
+  const params: Record<string, string> = {
+    mode: "payment",
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+  };
+
+  lineItems.forEach((item, i) => {
+    params[`line_items[${i}][price_data][currency]`] = "usd";
+    params[`line_items[${i}][price_data][product_data][name]`] = item.name;
+    params[`line_items[${i}][price_data][unit_amount]`] = String(Math.round(item.price * 100));
+    params[`line_items[${i}][quantity]`] = String(item.quantity);
+    if (item.image) {
+      params[`line_items[${i}][price_data][product_data][images][0]`] = item.image;
+    }
+  });
+
+  if (customerEmail) {
+    params.customer_email = customerEmail;
+  }
+
+  if (metadata) {
+    Object.entries(metadata).forEach(([key, value]) => {
+      params[`metadata[${key}]`] = value;
+    });
+  }
+
+  return params;
 };
 
 export const paymentsRouter = createTRPCRouter({
@@ -35,61 +107,27 @@ export const paymentsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       console.log("[Payments] Creating checkout session for", input.items.length, "items");
 
-      const stripe = await getStripe();
+      const baseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL || "https://example.com";
+      const successUrl = input.successUrl || `${baseUrl}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = input.cancelUrl || `${baseUrl}/api/payment-cancel`;
 
-      const lineItems: Array<{
-        price_data: {
-          currency: string;
-          product_data: { name: string; images?: string[] };
-          unit_amount: number;
-        };
-        quantity: number;
-      }> = input.items.map((item) => ({
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: item.name,
-            ...(item.image ? { images: [item.image] } : {}),
-          },
-          unit_amount: Math.round(item.price * 100),
-        },
-        quantity: item.quantity,
-      }));
-
+      const allItems = [...input.items];
       if (input.deliveryCharge > 0) {
-        lineItems.push({
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: "Delivery Charge",
-            },
-            unit_amount: Math.round(input.deliveryCharge * 100),
-          },
+        allItems.push({
+          name: "Delivery Charge",
+          price: input.deliveryCharge,
           quantity: 1,
         });
       }
 
-      const baseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL || "https://example.com";
-
-      const sessionParams: Record<string, unknown> = {
-        line_items: lineItems,
-        mode: "payment",
-        success_url: input.successUrl || `${baseUrl}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: input.cancelUrl || `${baseUrl}/api/payment-cancel`,
-        metadata: input.metadata || {},
-      };
-
-      if (input.customerEmail) {
-        sessionParams.customer_email = input.customerEmail;
-      }
-
-      const session = await (stripe.checkout.sessions.create as Function)(sessionParams);
+      const params = buildCheckoutParams(allItems, successUrl, cancelUrl, input.customerEmail, input.metadata);
+      const session = await stripeRequest("checkout/sessions", params);
 
       console.log("[Payments] Checkout session created:", session.id);
 
       return {
         sessionId: session.id as string,
-        url: session.url as string | null,
+        url: (session.url || null) as string | null,
       };
     }),
 
@@ -98,8 +136,7 @@ export const paymentsRouter = createTRPCRouter({
     .query(async ({ input }) => {
       console.log("[Payments] Checking payment status for:", input.sessionId);
 
-      const stripe = await getStripe();
-      const session = await stripe.checkout.sessions.retrieve(input.sessionId);
+      const session = await stripeGet(`checkout/sessions/${input.sessionId}`);
 
       return {
         status: session.payment_status,
@@ -123,44 +160,38 @@ export const paymentsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       console.log("[Payments] Creating booking payment for:", input.serviceTitle);
 
-      const stripe = await getStripe();
       const baseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL || "https://example.com";
 
-      const sessionParams: Record<string, unknown> = {
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              product_data: {
-                name: input.serviceTitle,
-                description: `Pandit: ${input.panditName} | Date: ${input.date}`,
-              },
-              unit_amount: Math.round(input.price * 100),
-            },
-            quantity: 1,
-          },
-        ],
-        mode: "payment",
-        success_url: `${baseUrl}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/api/payment-cancel`,
-        metadata: {
-          type: "booking",
-          bookingId: input.bookingId || "",
-          serviceTitle: input.serviceTitle,
-        },
+      const items = [{
+        name: input.serviceTitle,
+        price: input.price,
+        quantity: 1,
+      }];
+
+      const metadata: Record<string, string> = {
+        type: "booking",
+        bookingId: input.bookingId || "",
+        serviceTitle: input.serviceTitle,
       };
 
-      if (input.customerEmail) {
-        sessionParams.customer_email = input.customerEmail;
-      }
+      const params = buildCheckoutParams(
+        items,
+        `${baseUrl}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        `${baseUrl}/api/payment-cancel`,
+        input.customerEmail,
+        metadata,
+      );
 
-      const session = await (stripe.checkout.sessions.create as Function)(sessionParams);
+      params[`line_items[0][price_data][product_data][description]`] =
+        `Pandit: ${input.panditName} | Date: ${input.date}`;
+
+      const session = await stripeRequest("checkout/sessions", params);
 
       console.log("[Payments] Booking payment session created:", session.id);
 
       return {
         sessionId: session.id as string,
-        url: session.url as string | null,
+        url: (session.url || null) as string | null,
       };
     }),
 });

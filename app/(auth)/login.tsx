@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Mail, Lock } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
+import { Platform } from 'react-native';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import { colors } from '@/constants/colors';
@@ -19,9 +21,14 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  const redirectUri = makeRedirectUri({
+    ...(Platform.OS === 'web' ? { native: 'https://pandit-com.rork.app' } : {}),
+  });
+
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
     scopes: ['profile', 'email'],
+    redirectUri: Platform.OS === 'web' ? 'https://pandit-com.rork.app' : redirectUri,
   });
 
   useEffect(() => {

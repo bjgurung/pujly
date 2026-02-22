@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, User, Mail, Phone, Lock } from 'lucide-react-native';
@@ -10,9 +10,7 @@ import Button from '@/components/Button';
 import { colors } from '@/constants/colors';
 import { useAuthStore, UserRole } from '@/store/auth-store';
 
-if (Platform.OS !== 'web') {
-  WebBrowser.maybeCompleteAuthSession();
-}
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen() {
   const router = useRouter();

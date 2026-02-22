@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,9 +9,7 @@ import Button from '@/components/Button';
 import { colors } from '@/constants/colors';
 import { useAuthStore } from '@/store/auth-store';
 
-if (Platform.OS !== 'web') {
-  WebBrowser.maybeCompleteAuthSession();
-}
+WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 

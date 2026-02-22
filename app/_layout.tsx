@@ -1,12 +1,13 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { colors } from "@/constants/colors";
+import { useAuthStore } from "@/store/auth-store";
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -49,6 +50,21 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const router = useRouter();
+  const segments = useSegments();
+  const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    const inAuthGroup = (segments[0] as string) === '(auth)';
+    if (!isAuthenticated && !inAuthGroup) {
+      console.log('[Auth] Not authenticated, redirecting to welcome');
+      router.replace('/(auth)/welcome' as any);
+    } else if (isAuthenticated && inAuthGroup) {
+      console.log('[Auth] Authenticated, redirecting to home');
+      router.replace('/(tabs)/(home)' as any);
+    }
+  }, [isAuthenticated, segments]);
+
   return (
     <Stack
       screenOptions={{
@@ -61,7 +77,6 @@ function RootLayoutNav() {
     >
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="pandit/[id]" options={{ title: "Pandit Details" }} />
       <Stack.Screen name="service/[id]" options={{ title: "Service Details" }} />
       <Stack.Screen name="category/[id]" options={{ title: "Category" }} />

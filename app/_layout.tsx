@@ -2,7 +2,8 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
@@ -53,24 +54,49 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
   const { isAuthenticated, isHydrated } = useAuthStore();
+  const hasNavigated = useRef(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (!isHydrated) {
       console.log('[Auth] Waiting for store hydration...');
       return;
     }
+
+    const timer = setTimeout(() => {
+      setIsReady(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [isHydrated]);
+
+  useEffect(() => {
+    if (!isHydrated || !isReady) {
+      return;
+    }
     
     const inAuthGroup = (segments[0] as string) === '(auth)';
-    console.log('[Auth] Navigation guard - isAuthenticated:', isAuthenticated, 'inAuthGroup:', inAuthGroup);
+    console.log('[Auth] Navigation guard - isAuthenticated:', isAuthenticated, 'inAuthGroup:', inAuthGroup, 'segments:', segments);
     
     if (!isAuthenticated && !inAuthGroup) {
       console.log('[Auth] Not authenticated, redirecting to welcome');
+      hasNavigated.current = true;
       router.replace('/(auth)/welcome' as any);
     } else if (isAuthenticated && inAuthGroup) {
       console.log('[Auth] Authenticated, redirecting to home');
+      hasNavigated.current = true;
       router.replace('/(tabs)/(home)' as any);
+    } else if (isAuthenticated && !inAuthGroup) {
+      console.log('[Auth] Authenticated and on correct route, showing content');
     }
-  }, [isAuthenticated, isHydrated, segments]);
+  }, [isAuthenticated, isHydrated, isReady, segments]);
+
+  if (!isHydrated) {
+    return (
+      <View style={loadingStyles.container}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <Stack
@@ -82,8 +108,8 @@ function RootLayoutNav() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="pandit/[id]" options={{ title: "Pandit Details" }} />
       <Stack.Screen name="service/[id]" options={{ title: "Service Details" }} />
       <Stack.Screen name="category/[id]" options={{ title: "Category" }} />
@@ -119,3 +145,12 @@ function RootLayoutNav() {
     </Stack>
   );
 }
+
+const loadingStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+});

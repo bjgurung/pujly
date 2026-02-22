@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Service, Pandit, Category } from '@/mocks/services';
+import { trpcClient } from '@/lib/trpc';
 
-const mockServices: Service[] = [
+const FALLBACK_SERVICES: Service[] = [
   {
     id: '1',
     title: 'Griha Pravesh Puja',
@@ -84,7 +85,7 @@ const mockServices: Service[] = [
   },
 ];
 
-const mockPandits: Pandit[] = [
+const FALLBACK_PANDITS: Pandit[] = [
   {
     id: '1',
     name: 'Pandit Ramesh Sharma',
@@ -162,50 +163,58 @@ const mockPandits: Pandit[] = [
   },
 ];
 
-const mockCategories: Category[] = [
-  {
-    id: '1',
-    title: 'Home Ceremonies',
-    description: 'Rituals for blessing and purifying homes',
-    imageUrl: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?q=80&w=2070&auto=format&fit=crop',
-    count: 8,
-  },
-  {
-    id: '2',
-    title: 'Child Ceremonies',
-    description: 'Rituals for children including naming and first haircut',
-    imageUrl: 'https://images.unsplash.com/photo-1555050455-f96634b5cba6?q=80&w=2033&auto=format&fit=crop',
-    count: 6,
-  },
-  {
-    id: '3',
-    title: 'Wedding Ceremonies',
-    description: 'Traditional Hindu wedding rituals',
-    imageUrl: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=1974&auto=format&fit=crop',
-    count: 5,
-  },
-  {
-    id: '4',
-    title: 'Vastu & Consultation',
-    description: 'Vastu analysis and remedies for homes and offices',
-    imageUrl: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?q=80&w=2070&auto=format&fit=crop',
-    count: 3,
-  },
-  {
-    id: '5',
-    title: 'Astrology',
-    description: 'Horoscope reading, matchmaking, and remedies',
-    imageUrl: 'https://images.unsplash.com/photo-1515894274780-af6262f1fcc2?q=80&w=2070&auto=format&fit=crop',
-    count: 4,
-  },
-  {
-    id: '6',
-    title: 'Festival Pujas',
-    description: 'Special pujas for festivals like Diwali, Navratri',
-    imageUrl: 'https://images.unsplash.com/photo-1600093112291-7b553e3fcb82?q=80&w=2070&auto=format&fit=crop',
-    count: 7,
-  },
+const FALLBACK_CATEGORIES: Category[] = [
+  { id: '1', title: 'Home Ceremonies', description: 'Rituals for blessing and purifying homes', imageUrl: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?q=80&w=2070&auto=format&fit=crop', count: 8 },
+  { id: '2', title: 'Child Ceremonies', description: 'Rituals for children including naming and first haircut', imageUrl: 'https://images.unsplash.com/photo-1555050455-f96634b5cba6?q=80&w=2033&auto=format&fit=crop', count: 6 },
+  { id: '3', title: 'Wedding Ceremonies', description: 'Traditional Hindu wedding rituals', imageUrl: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=1974&auto=format&fit=crop', count: 5 },
+  { id: '4', title: 'Vastu & Consultation', description: 'Vastu analysis and remedies for homes and offices', imageUrl: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?q=80&w=2070&auto=format&fit=crop', count: 3 },
+  { id: '5', title: 'Astrology', description: 'Horoscope reading, matchmaking, and remedies', imageUrl: 'https://images.unsplash.com/photo-1515894274780-af6262f1fcc2?q=80&w=2070&auto=format&fit=crop', count: 4 },
+  { id: '6', title: 'Festival Pujas', description: 'Special pujas for festivals like Diwali, Navratri', imageUrl: 'https://images.unsplash.com/photo-1600093112291-7b553e3fcb82?q=80&w=2070&auto=format&fit=crop', count: 7 },
 ];
+
+function mapDbService(row: Record<string, unknown>): Service {
+  return {
+    id: String(row.id),
+    title: String(row.title || ''),
+    description: String(row.description || ''),
+    price: Number(row.price) || null,
+    duration: Number(row.duration) || 0,
+    location: String(row.location || ''),
+    imageUrl: String(row.image_url || row.imageUrl || ''),
+    rating: Number(row.rating) || 0,
+    reviewCount: Number(row.review_count || row.reviewCount) || 0,
+    panditId: String(row.pandit_id || row.panditId || ''),
+    categoryId: String(row.category_id || row.categoryId || ''),
+  };
+}
+
+function mapDbPandit(row: Record<string, unknown>): Pandit {
+  return {
+    id: String(row.id),
+    name: String(row.name || ''),
+    specialization: String(row.specialization || ''),
+    about: String(row.about || ''),
+    location: String(row.location || ''),
+    imageUrl: String(row.image_url || row.imageUrl || ''),
+    languages: Array.isArray(row.languages) ? row.languages as string[] : [],
+    rating: Number(row.rating) || 0,
+    reviewCount: Number(row.review_count || row.reviewCount) || 0,
+    verified: Boolean(row.verified),
+    experience: Number(row.experience) || 0,
+    categoryIds: Array.isArray(row.category_ids || row.categoryIds) ? (row.category_ids || row.categoryIds) as string[] : [],
+    services: Array.isArray(row.services) ? row.services as string[] : [],
+  };
+}
+
+function mapDbCategory(row: Record<string, unknown>): Category {
+  return {
+    id: String(row.id),
+    title: String(row.title || row.name || ''),
+    description: row.description ? String(row.description) : undefined,
+    imageUrl: String(row.image_url || row.imageUrl || ''),
+    count: Number(row.count) || 0,
+  };
+}
 
 interface ServicesState {
   services: Service[];
@@ -229,39 +238,63 @@ interface ServicesState {
 export const useServicesStore = create<ServicesState>()(
   persist(
     (set, get) => ({
-      services: mockServices,
-      pandits: mockPandits,
-      categories: mockCategories,
+      services: FALLBACK_SERVICES,
+      pandits: FALLBACK_PANDITS,
+      categories: FALLBACK_CATEGORIES,
       isLoading: false,
       error: null,
 
       fetchServices: async () => {
         set({ isLoading: true, error: null });
         try {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          set({ services: mockServices, isLoading: false });
-        } catch {
-          set({ error: 'Failed to fetch services', isLoading: false });
+          const data = await trpcClient.data.getServices.query();
+          if (data && data.length > 0) {
+            const mapped = data.map((row: Record<string, unknown>) => mapDbService(row));
+            console.log('[Services] Fetched', mapped.length, 'services from API');
+            set({ services: mapped, isLoading: false });
+          } else {
+            console.log('[Services] No data from API, using fallback');
+            set({ services: FALLBACK_SERVICES, isLoading: false });
+          }
+        } catch (e) {
+          console.log('[Services] API error, using fallback:', e);
+          set({ services: FALLBACK_SERVICES, isLoading: false });
         }
       },
 
       fetchPandits: async () => {
         set({ isLoading: true, error: null });
         try {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          set({ pandits: mockPandits, isLoading: false });
-        } catch {
-          set({ error: 'Failed to fetch pandits', isLoading: false });
+          const data = await trpcClient.data.getPandits.query();
+          if (data && data.length > 0) {
+            const mapped = data.map((row: Record<string, unknown>) => mapDbPandit(row));
+            console.log('[Services] Fetched', mapped.length, 'pandits from API');
+            set({ pandits: mapped, isLoading: false });
+          } else {
+            console.log('[Services] No pandits from API, using fallback');
+            set({ pandits: FALLBACK_PANDITS, isLoading: false });
+          }
+        } catch (e) {
+          console.log('[Services] Pandits API error, using fallback:', e);
+          set({ pandits: FALLBACK_PANDITS, isLoading: false });
         }
       },
 
       fetchCategories: async () => {
         set({ isLoading: true, error: null });
         try {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          set({ categories: mockCategories, isLoading: false });
-        } catch {
-          set({ error: 'Failed to fetch categories', isLoading: false });
+          const data = await trpcClient.data.getCategories.query();
+          if (data && data.length > 0) {
+            const mapped = data.map((row: Record<string, unknown>) => mapDbCategory(row));
+            console.log('[Services] Fetched', mapped.length, 'categories from API');
+            set({ categories: mapped, isLoading: false });
+          } else {
+            console.log('[Services] No categories from API, using fallback');
+            set({ categories: FALLBACK_CATEGORIES, isLoading: false });
+          }
+        } catch (e) {
+          console.log('[Services] Categories API error, using fallback:', e);
+          set({ categories: FALLBACK_CATEGORIES, isLoading: false });
         }
       },
 

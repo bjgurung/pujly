@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CartItem } from './cart-store';
+import { trpcClient } from '@/lib/trpc';
 
 export interface Address {
   id: string;
@@ -30,7 +31,7 @@ export interface Order {
 interface OrderState {
   orders: Order[];
   addresses: Address[];
-  addOrder: (order: Omit<Order, 'id' | 'createdAt'>) => string;
+  addOrder: (order: Omit<Order, 'id' | 'createdAt'>, userId?: string) => string;
   getOrder: (id: string) => Order | undefined;
   cancelOrder: (id: string) => void;
   addAddress: (address: Omit<Address, 'id'>) => string;
@@ -38,6 +39,7 @@ interface OrderState {
   removeAddress: (id: string) => void;
   setDefaultAddress: (id: string) => void;
   getDefaultAddress: () => Address | undefined;
+  fetchOrders: (userId: string) => Promise<void>;
 }
 
 export const useOrderStore = create<OrderState>()(
@@ -46,7 +48,7 @@ export const useOrderStore = create<OrderState>()(
       orders: [],
       addresses: [],
 
-      addOrder: (orderData) => {
+      addOrder: (orderData, userId) => {
         const id = `order_${Date.now()}`;
         const newOrder: Order = {
           ...orderData,
@@ -54,6 +56,30 @@ export const useOrderStore = create<OrderState>()(
           createdAt: new Date().toISOString(),
         };
         set(state => ({ orders: [newOrder, ...state.orders] }));
+
+        if (userId) {
+          trpcClient.data.createOrder.mutate({
+            user_id: userId,
+            items: JSON.stringify(orderData.items),
+            total: orderData.total,
+            address: JSON.stringify(orderData.address),
+            payment_method: orderData.paymentMethod,
+            status: orderData.status,
+            estimated_delivery: orderData.estimatedDelivery,
+          }).then(result => {
+            if (result) {
+              console.log('[Orders] Order saved to Supabase:', result.id);
+              set(state => ({
+                orders: state.orders.map(o =>
+                  o.id === id ? { ...o, id: String(result.id) } : o
+                ),
+              }));
+            }
+          }).catch(e => {
+            console.log('[Orders] Failed to save order to API:', e);
+          });
+        }
+
         return id;
       },
 
@@ -65,6 +91,36 @@ export const useOrderStore = create<OrderState>()(
             o.id === id ? { ...o, status: 'cancelled' as const } : o
           ),
         }));
+        trpcClient.data.updateOrderStatus.mutate({ id, status: 'cancelled' }).catch(e => {
+          console.log('[Orders] Failed to cancel order via API:', e);
+        });
+      },
+
+      fetchOrders: async (userId: string) => {
+        try {
+          const data = await trpcClient.data.getOrders.query({ userId });
+          if (data && data.length > 0) {
+            const mapped: Order[] = data.map((row: Record<string, unknown>) => ({
+              id: String(row.id),
+              items: typeof row.items === 'string' ? JSON.parse(row.items as string) : (row.items || []),
+              total: Number(row.total) || 0,
+              address: typeof row.address === 'string' ? JSON.parse(row.address as string) : (row.address || {}),
+              paymentMethod: String(row.payment_method || ''),
+              status: (row.status || 'pending') as Order['status'],
+              createdAt: String(row.created_at || new Date().toISOString()),
+              trackingId: row.tracking_id ? String(row.tracking_id) : undefined,
+              estimatedDelivery: row.estimated_delivery ? String(row.estimated_delivery) : undefined,
+            }));
+            console.log('[Orders] Fetched', mapped.length, 'orders from API');
+            set(state => {
+              const localIds = new Set(state.orders.map(o => o.id));
+              const newOrders = mapped.filter(o => !localIds.has(o.id));
+              return { orders: [...newOrders, ...state.orders] };
+            });
+          }
+        } catch (e) {
+          console.log('[Orders] Failed to fetch orders:', e);
+        }
       },
 
       addAddress: (addressData) => {

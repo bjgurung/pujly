@@ -2,8 +2,27 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BookingStatus } from '@/mocks/bookings';
+import { trpcClient } from '@/lib/trpc';
 
-const MOCK_BOOKINGS = [
+interface BookingItem {
+  id: string;
+  serviceId: string;
+  serviceTitle: string;
+  panditId: string;
+  panditName: string;
+  panditImageUrl: string;
+  userId: string;
+  date: string;
+  time: string;
+  duration: number;
+  location: string;
+  price: number;
+  status: BookingStatus;
+  paymentStatus: 'pending' | 'paid' | 'refunded' | 'failed';
+  createdAt: string;
+}
+
+const FALLBACK_BOOKINGS: BookingItem[] = [
   {
     id: '1',
     serviceId: '1',
@@ -55,32 +74,33 @@ const MOCK_BOOKINGS = [
     paymentStatus: 'paid' as const,
     createdAt: '2026-02-01',
   },
-  {
-    id: '4',
-    serviceId: '4',
-    serviceTitle: 'Satyanarayan Puja',
-    panditId: 'p4',
-    panditName: 'Pandit Anil Kumar',
-    panditImageUrl: 'https://images.unsplash.com/photo-1569913486515-b74bf7751574?q=80&w=1974&auto=format&fit=crop',
-    userId: 'user1',
-    date: '2026-02-18',
-    time: '8:00 AM',
-    duration: 150,
-    location: 'Jaipur, India',
-    price: 7500,
-    status: BookingStatus.CANCELLED,
-    paymentStatus: 'refunded' as const,
-    createdAt: '2026-02-05',
-  },
 ];
 
-type BookingItem = typeof MOCK_BOOKINGS[0];
+function mapDbBooking(row: Record<string, unknown>): BookingItem {
+  return {
+    id: String(row.id),
+    serviceId: String(row.service_id || row.serviceId || ''),
+    serviceTitle: String(row.service_title || row.serviceTitle || ''),
+    panditId: String(row.pandit_id || row.panditId || ''),
+    panditName: String(row.pandit_name || row.panditName || ''),
+    panditImageUrl: String(row.pandit_image_url || row.panditImageUrl || ''),
+    userId: String(row.user_id || row.userId || ''),
+    date: String(row.date || ''),
+    time: String(row.time || ''),
+    duration: Number(row.duration) || 0,
+    location: String(row.location || ''),
+    price: Number(row.price) || 0,
+    status: (row.status as BookingStatus) || BookingStatus.PENDING,
+    paymentStatus: (row.payment_status || row.paymentStatus || 'pending') as 'pending' | 'paid' | 'refunded' | 'failed',
+    createdAt: String(row.created_at || row.createdAt || new Date().toISOString()),
+  };
+}
 
 interface BookingsState {
   bookings: BookingItem[];
   isLoading: boolean;
   error: string | null;
-  fetchBookings: () => Promise<void>;
+  fetchBookings: (userId?: string) => Promise<void>;
   getBookingById: (id: string) => BookingItem | undefined;
   createBooking: (booking: Omit<BookingItem, 'id' | 'createdAt'>) => Promise<string>;
   updateBookingStatus: (id: string, status: BookingStatus) => Promise<void>;
@@ -90,17 +110,27 @@ interface BookingsState {
 export const useBookingsStore = create<BookingsState>()(
   persist(
     (set, get) => ({
-      bookings: MOCK_BOOKINGS,
+      bookings: FALLBACK_BOOKINGS,
       isLoading: false,
       error: null,
 
-      fetchBookings: async () => {
+      fetchBookings: async (userId?: string) => {
         set({ isLoading: true, error: null });
         try {
-          await new Promise(resolve => setTimeout(resolve, 800));
-          set({ bookings: get().bookings.length > 0 ? get().bookings : MOCK_BOOKINGS, isLoading: false });
-        } catch (error) {
-          set({ error: error instanceof Error ? error.message : 'Failed to fetch bookings', isLoading: false });
+          if (userId) {
+            const data = await trpcClient.data.getBookings.query({ userId });
+            if (data && data.length > 0) {
+              const mapped = data.map((row: Record<string, unknown>) => mapDbBooking(row));
+              console.log('[Bookings] Fetched', mapped.length, 'bookings from API');
+              set({ bookings: mapped, isLoading: false });
+              return;
+            }
+          }
+          console.log('[Bookings] Using local data');
+          set({ isLoading: false });
+        } catch (e) {
+          console.log('[Bookings] API error, using local data:', e);
+          set({ isLoading: false });
         }
       },
 
@@ -109,7 +139,34 @@ export const useBookingsStore = create<BookingsState>()(
       createBooking: async (bookingData) => {
         set({ isLoading: true, error: null });
         try {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          const result = await trpcClient.data.createBooking.mutate({
+            service_id: bookingData.serviceId,
+            service_title: bookingData.serviceTitle,
+            pandit_id: bookingData.panditId,
+            pandit_name: bookingData.panditName,
+            pandit_image_url: bookingData.panditImageUrl,
+            user_id: bookingData.userId,
+            date: bookingData.date,
+            time: bookingData.time,
+            duration: bookingData.duration,
+            location: bookingData.location,
+            price: bookingData.price,
+            status: bookingData.status,
+            payment_status: bookingData.paymentStatus,
+          });
+
+          if (result) {
+            const mapped = mapDbBooking(result as Record<string, unknown>);
+            set(state => ({
+              bookings: [...state.bookings, mapped],
+              isLoading: false,
+            }));
+            console.log('[Bookings] Created booking:', mapped.id);
+            return mapped.id;
+          }
+          throw new Error('No result from API');
+        } catch (e) {
+          console.log('[Bookings] API create error, creating locally:', e);
           const newBooking = {
             ...bookingData,
             id: `booking-${Date.now()}`,
@@ -120,40 +177,41 @@ export const useBookingsStore = create<BookingsState>()(
             isLoading: false,
           }));
           return newBooking.id;
-        } catch (error) {
-          set({ error: error instanceof Error ? error.message : 'Failed to create booking', isLoading: false });
-          throw error;
         }
       },
 
       updateBookingStatus: async (id, status) => {
         set({ isLoading: true, error: null });
         try {
-          await new Promise(resolve => setTimeout(resolve, 800));
-          set(state => ({
-            bookings: state.bookings.map(b => b.id === id ? { ...b, status } : b),
-            isLoading: false,
-          }));
-        } catch (error) {
-          set({ error: error instanceof Error ? error.message : 'Failed to update booking', isLoading: false });
-          throw error;
+          await trpcClient.data.updateBookingStatus.mutate({ id, status });
+          console.log('[Bookings] Updated booking status via API:', id, status);
+        } catch (e) {
+          console.log('[Bookings] API update error, updating locally:', e);
         }
+        set(state => ({
+          bookings: state.bookings.map(b => b.id === id ? { ...b, status } : b),
+          isLoading: false,
+        }));
       },
 
       cancelBooking: async (id) => {
         set({ isLoading: true, error: null });
         try {
-          await new Promise(resolve => setTimeout(resolve, 800));
-          set(state => ({
-            bookings: state.bookings.map(b =>
-              b.id === id ? { ...b, status: BookingStatus.CANCELLED, paymentStatus: 'refunded' as const } : b
-            ),
-            isLoading: false,
-          }));
-        } catch (error) {
-          set({ error: error instanceof Error ? error.message : 'Failed to cancel booking', isLoading: false });
-          throw error;
+          await trpcClient.data.updateBookingStatus.mutate({
+            id,
+            status: BookingStatus.CANCELLED,
+            payment_status: 'refunded',
+          });
+          console.log('[Bookings] Cancelled booking via API:', id);
+        } catch (e) {
+          console.log('[Bookings] API cancel error, cancelling locally:', e);
         }
+        set(state => ({
+          bookings: state.bookings.map(b =>
+            b.id === id ? { ...b, status: BookingStatus.CANCELLED, paymentStatus: 'refunded' as const } : b
+          ),
+          isLoading: false,
+        }));
       },
     }),
     {

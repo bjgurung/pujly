@@ -1,8 +1,6 @@
-import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -19,26 +17,9 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
 
-  const [loaded, error] = useFonts({
-    ...FontAwesome.font,
-  });
-
   useEffect(() => {
-    if (error) {
-      console.error("Font loading error:", error);
-      throw error;
-    }
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>

@@ -47,9 +47,11 @@ export default function LoginScreen() {
   const handleGoogleLogin = async (accessToken: string) => {
     setGoogleLoading(true);
     try {
+      console.log('[Login] Starting Google sign-in...');
       await googleSignIn(accessToken, 'user');
-      router.replace('/(tabs)/(home)' as any);
-    } catch {
+      console.log('[Login] Google sign-in succeeded, navigation guard will redirect');
+    } catch (e) {
+      console.error('[Login] Google sign-in error:', e);
       Alert.alert('Error', 'Google sign-in failed. Please try again.');
     } finally {
       setGoogleLoading(false);
@@ -62,9 +64,11 @@ export default function LoginScreen() {
       return;
     }
     try {
+      console.log('[Login] Starting email login...');
       await login(email, password);
-      router.replace('/(tabs)/(home)' as any);
-    } catch {
+      console.log('[Login] Email login succeeded, navigation guard will redirect');
+    } catch (e) {
+      console.error('[Login] Email login error:', e);
       Alert.alert('Error', 'Login failed. Please try again.');
     }
   };

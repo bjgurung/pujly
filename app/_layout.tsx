@@ -1,9 +1,9 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
-import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/lib/trpc";
@@ -50,23 +50,59 @@ export default function RootLayout() {
   );
 }
 
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[ErrorBoundary] Caught error:', error.message);
+    console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={loadingStyles.errorContainer}>
+          <Text style={loadingStyles.errorEmoji}>⚠️</Text>
+          <Text style={loadingStyles.errorTitle}>Something went wrong</Text>
+          <Text style={loadingStyles.errorMessage}>
+            {this.state.error?.message || 'An unexpected error occurred'}
+          </Text>
+          <TouchableOpacity
+            style={loadingStyles.retryButton}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={loadingStyles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
-  const rootNavigationState = useRootNavigationState();
-  let isAuthenticated = false;
-  let isHydrated = false;
-  try {
-    const authState = useAuthStore();
-    isAuthenticated = authState.isAuthenticated;
-    isHydrated = authState.isHydrated;
-  } catch (e) {
-    console.error('[Auth] Failed to read auth store:', e);
-    isHydrated = true;
-    isAuthenticated = false;
-  }
+  const { isAuthenticated, isHydrated } = useAuthStore();
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
 
-  const navigationReady = rootNavigationState?.key != null;
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log('[Auth] Navigation ready (timer)');
+      setIsNavigationReady(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -74,7 +110,7 @@ function RootLayoutNav() {
       return;
     }
 
-    if (!navigationReady) {
+    if (!isNavigationReady) {
       console.log('[Auth] Waiting for navigation to be ready...');
       return;
     }
@@ -88,12 +124,10 @@ function RootLayoutNav() {
     } else if (isAuthenticated && inAuthGroup) {
       console.log('[Auth] Authenticated, redirecting to home');
       router.replace('/(tabs)/(home)' as any);
-    } else if (isAuthenticated && !inAuthGroup) {
-      console.log('[Auth] Authenticated and on correct route, showing content');
     }
-  }, [isAuthenticated, isHydrated, navigationReady, segments]);
+  }, [isAuthenticated, isHydrated, isNavigationReady, segments]);
 
-  if (!isHydrated || !navigationReady) {
+  if (!isHydrated) {
     return (
       <View style={loadingStyles.container}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -102,6 +136,7 @@ function RootLayoutNav() {
   }
 
   return (
+    <AppErrorBoundary>
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.white },
@@ -146,6 +181,7 @@ function RootLayoutNav() {
       <Stack.Screen name="store/products" options={{ title: "Products" }} />
       <Stack.Screen name="store/category/[id]" options={{ title: "Category" }} />
     </Stack>
+    </AppErrorBoundary>
   );
 }
 
@@ -155,5 +191,40 @@ const loadingStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+    padding: 24,
+  },
+  errorEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '700' as const,
+    color: colors.text,
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: colors.textLight,
+    textAlign: 'center' as const,
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  retryText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
 });

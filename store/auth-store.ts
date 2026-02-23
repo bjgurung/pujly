@@ -1,7 +1,20 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { trpcClient } from '@/lib/trpc';
+
+let trpcClientRef: any = null;
+
+const getTrpcClient = () => {
+  if (!trpcClientRef) {
+    try {
+      const { trpcClient } = require('@/lib/trpc');
+      trpcClientRef = trpcClient;
+    } catch (e) {
+      console.error('[Auth] Failed to load trpc client:', e);
+    }
+  }
+  return trpcClientRef;
+};
 
 export type UserRole = 'user' | 'pandit' | 'admin';
 
@@ -56,7 +69,9 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
-          const result = await trpcClient.auth.emailLogin.mutate({ email, password });
+          const client = getTrpcClient();
+          if (!client) throw new Error('API client not available');
+          const result = await client.auth.emailLogin.mutate({ email, password });
           console.log('[Auth] Login success:', result.user.email);
           const user: User = {
             ...result.user,
@@ -81,7 +96,9 @@ export const useAuthStore = create<AuthState>()(
       register: async (data) => {
         set({ isLoading: true, error: null });
         try {
-          const result = await trpcClient.auth.emailRegister.mutate({
+          const client = getTrpcClient();
+          if (!client) throw new Error('API client not available');
+          const result = await client.auth.emailRegister.mutate({
             name: data.name,
             email: data.email,
             phone: data.phone,
@@ -113,7 +130,9 @@ export const useAuthStore = create<AuthState>()(
       googleSignIn: async (accessToken: string, role: UserRole = 'user') => {
         set({ isLoading: true, error: null });
         try {
-          const result = await trpcClient.auth.googleSignIn.mutate({
+          const client = getTrpcClient();
+          if (!client) throw new Error('API client not available');
+          const result = await client.auth.googleSignIn.mutate({
             accessToken,
             role,
           });

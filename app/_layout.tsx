@@ -54,7 +54,17 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
   const rootNavigationState = useRootNavigationState();
-  const { isAuthenticated, isHydrated } = useAuthStore();
+  let isAuthenticated = false;
+  let isHydrated = false;
+  try {
+    const authState = useAuthStore();
+    isAuthenticated = authState.isAuthenticated;
+    isHydrated = authState.isHydrated;
+  } catch (e) {
+    console.error('[Auth] Failed to read auth store:', e);
+    isHydrated = true;
+    isAuthenticated = false;
+  }
 
   const navigationReady = rootNavigationState?.key != null;
 

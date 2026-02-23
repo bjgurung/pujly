@@ -1,8 +1,8 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -53,9 +53,10 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
+  const rootNavigationState = useRootNavigationState();
   const { isAuthenticated, isHydrated } = useAuthStore();
-  const hasNavigated = useRef(false);
-  const [isReady, setIsReady] = useState(false);
+
+  const navigationReady = rootNavigationState?.key != null;
 
   useEffect(() => {
     if (!isHydrated) {
@@ -63,34 +64,26 @@ function RootLayoutNav() {
       return;
     }
 
-    const timer = setTimeout(() => {
-      setIsReady(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [isHydrated]);
-
-  useEffect(() => {
-    if (!isHydrated || !isReady) {
+    if (!navigationReady) {
+      console.log('[Auth] Waiting for navigation to be ready...');
       return;
     }
-    
+
     const inAuthGroup = (segments[0] as string) === '(auth)';
     console.log('[Auth] Navigation guard - isAuthenticated:', isAuthenticated, 'inAuthGroup:', inAuthGroup, 'segments:', segments);
-    
+
     if (!isAuthenticated && !inAuthGroup) {
       console.log('[Auth] Not authenticated, redirecting to welcome');
-      hasNavigated.current = true;
       router.replace('/(auth)/welcome' as any);
     } else if (isAuthenticated && inAuthGroup) {
       console.log('[Auth] Authenticated, redirecting to home');
-      hasNavigated.current = true;
       router.replace('/(tabs)/(home)' as any);
     } else if (isAuthenticated && !inAuthGroup) {
       console.log('[Auth] Authenticated and on correct route, showing content');
     }
-  }, [isAuthenticated, isHydrated, isReady, segments]);
+  }, [isAuthenticated, isHydrated, navigationReady, segments]);
 
-  if (!isHydrated) {
+  if (!isHydrated || !navigationReady) {
     return (
       <View style={loadingStyles.container}>
         <ActivityIndicator size="large" color={colors.primary} />

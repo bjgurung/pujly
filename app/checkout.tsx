@@ -7,8 +7,20 @@ import { colors } from '@/constants/colors';
 import { useCartStore } from '@/store/cart-store';
 import { useOrderStore } from '@/store/order-store';
 import { useAuthStore } from '@/store/auth-store';
-import { trpcClient } from '@/lib/trpc';
 import Button from '@/components/Button';
+
+let trpcClientRef: any = null;
+const getTrpcClient = () => {
+  if (!trpcClientRef) {
+    try {
+      const { trpcClient } = require('@/lib/trpc');
+      trpcClientRef = trpcClient;
+    } catch (e) {
+      console.error('[Checkout] Failed to load trpc client:', e);
+    }
+  }
+  return trpcClientRef;
+};
 
 export default function CheckoutScreen() {
   const router = useRouter();
@@ -41,7 +53,9 @@ export default function CheckoutScreen() {
         image: item.product.images?.[0],
       }));
 
-      const result = await trpcClient.payments.createCheckoutSession.mutate({
+      const client = getTrpcClient();
+      if (!client) throw new Error('Payment client not available');
+      const result = await client.payments.createCheckoutSession.mutate({
         items: stripeItems,
         deliveryCharge,
         customerEmail: user?.email,
@@ -63,13 +77,16 @@ export default function CheckoutScreen() {
 
         if (browserResult.type === 'cancel' || browserResult.type === 'dismiss') {
           try {
-            const status = await trpcClient.payments.getPaymentStatus.query({
-              sessionId: result.sessionId,
-            });
+            const client2 = getTrpcClient();
+            if (client2) {
+              const status = await client2.payments.getPaymentStatus.query({
+                sessionId: result.sessionId,
+              });
 
-            if (status.status === 'paid') {
-              handlePaymentSuccess();
-              return;
+              if (status.status === 'paid') {
+                handlePaymentSuccess();
+                return;
+              }
             }
           } catch (e) {
             console.log('[Checkout] Could not verify payment status:', e);
@@ -87,9 +104,10 @@ export default function CheckoutScreen() {
                 text: 'Yes, I paid',
                 onPress: async () => {
                   try {
-                    const status = await trpcClient.payments.getPaymentStatus.query({
+                    const client3 = getTrpcClient();
+                    const status = client3 ? await client3.payments.getPaymentStatus.query({
                       sessionId: result.sessionId,
-                    });
+                    }) : null;
                     if (status.status === 'paid') {
                       handlePaymentSuccess();
                     } else {

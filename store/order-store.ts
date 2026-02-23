@@ -2,7 +2,19 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CartItem } from './cart-store';
-import { trpcClient } from '@/lib/trpc';
+
+let trpcClientRef: any = null;
+const getTrpcClient = () => {
+  if (!trpcClientRef) {
+    try {
+      const { trpcClient } = require('@/lib/trpc');
+      trpcClientRef = trpcClient;
+    } catch (e) {
+      console.error('[Orders] Failed to load trpc client:', e);
+    }
+  }
+  return trpcClientRef;
+};
 
 export interface Address {
   id: string;
@@ -58,7 +70,8 @@ export const useOrderStore = create<OrderState>()(
         set(state => ({ orders: [newOrder, ...state.orders] }));
 
         if (userId) {
-          trpcClient.data.createOrder.mutate({
+          const client = getTrpcClient();
+          if (client) client.data.createOrder.mutate({
             user_id: userId,
             items: JSON.stringify(orderData.items),
             total: orderData.total,
@@ -66,7 +79,7 @@ export const useOrderStore = create<OrderState>()(
             payment_method: orderData.paymentMethod,
             status: orderData.status,
             estimated_delivery: orderData.estimatedDelivery,
-          }).then(result => {
+          }).then((result: any) => {
             if (result) {
               console.log('[Orders] Order saved to Supabase:', result.id);
               set(state => ({
@@ -75,7 +88,7 @@ export const useOrderStore = create<OrderState>()(
                 ),
               }));
             }
-          }).catch(e => {
+          }).catch((e: any) => {
             console.log('[Orders] Failed to save order to API:', e);
           });
         }
@@ -91,14 +104,17 @@ export const useOrderStore = create<OrderState>()(
             o.id === id ? { ...o, status: 'cancelled' as const } : o
           ),
         }));
-        trpcClient.data.updateOrderStatus.mutate({ id, status: 'cancelled' }).catch(e => {
+        const client = getTrpcClient();
+        if (client) client.data.updateOrderStatus.mutate({ id, status: 'cancelled' }).catch((e: any) => {
           console.log('[Orders] Failed to cancel order via API:', e);
         });
       },
 
       fetchOrders: async (userId: string) => {
         try {
-          const data = await trpcClient.data.getOrders.query({ userId });
+          const client = getTrpcClient();
+          if (!client) return;
+          const data = await client.data.getOrders.query({ userId });
           if (data && data.length > 0) {
             const mapped: Order[] = data.map((row: Record<string, unknown>) => ({
               id: String(row.id),

@@ -1,0 +1,83 @@
+import { Service, Pandit, Category } from '@/mocks/services';
+
+export const FALLBACK_SERVICES: Service[] = [
+  {
+    id: '1',
+    title: 'Griha Pravesh Puja',
+    description: 'Traditional housewarming ceremony to bless your new home.',
+    price: 5000,
+    duration: 180,
+    location: 'Delhi NCR',
+    imageUrl: 'https://images.unsplash.com/photo-1621416894569-0f39ed31d247?q=80&w=2070&auto=format&fit=crop',
+    rating: 4.8,
+    reviewCount: 124,
+    panditId: '1',
+    categoryId: '1',
+  },
+  {
+    id: '2',
+    title: 'Satyanarayan Puja',
+    description: 'Sacred ritual dedicated to Lord Vishnu for prosperity.',
+    price: 3500,
+    duration: 120,
+    location: 'Delhi NCR',
+    imageUrl: 'https://images.unsplash.com/photo-1600093112291-7b553e3fcb82?q=80&w=2070&auto=format&fit=crop',
+    rating: 4.7,
+    reviewCount: 98,
+    panditId: '2',
+    categoryId: '1',
+  },
+  {
+    id: '3',
+    title: 'Naming Ceremony',
+    description: 'Traditional ceremony to name your newborn child.',
+    price: 2500,
+    duration: 90,
+    location: 'Delhi NCR',
+    imageUrl: 'https://images.unsplash.com/photo-1555050455-f96634b5cba6?q=80&w=2033&auto=format&fit=crop',
+    rating: 4.9,
+    reviewCount: 76,
+    panditId: '3',
+    categoryId: '2',
+  },
+];
+
+export const FALLBACK_PANDITS: Pandit[] = [
+  {
+    id: '1',
+    name: 'Pandit Ramesh Sharma',
+    specialization: 'Vedic Rituals & Ceremonies',
+    about: 'Expert in performing various Vedic rituals with 20+ years experience.',
+    location: 'Delhi',
+    imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1974&auto=format&fit=crop',
+    languages: ['Hindi', 'Sanskrit', 'English'],
+    rating: 4.8,
+    reviewCount: 156,
+    verified: true,
+    experience: 20,
+    categoryIds: ['1', '3'],
+    services: ['1', '4'],
+  },
+  {
+    id: '2',
+    name: 'Pandit Suresh Joshi',
+    specialization: 'Family Ceremonies & Pujas',
+    about: 'Specializes in family ceremonies and household blessings.',
+    location: 'Noida',
+    imageUrl: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=1974&auto=format&fit=crop',
+    languages: ['Hindi', 'Sanskrit'],
+    rating: 4.7,
+    reviewCount: 124,
+    verified: true,
+    experience: 18,
+    categoryIds: ['1', '2'],
+    services: ['2', '6'],
+  },
+];
+
+export const FALLBACK_CATEGORIES: Category[] = [
+  { id: '1', title: 'Home Ceremonies', description: 'Rituals for blessing homes', imageUrl: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?q=80&w=2070&auto=format&fit=crop', count: 8 },
+  { id: '2', title: 'Child Ceremonies', description: 'Rituals for children', imageUrl: 'https://images.unsplash.com/photo-1555050455-f96634b5cba6?q=80&w=2033&auto=format&fit=crop', count: 6 },
+  { id: '3', title: 'Wedding Ceremonies', description: 'Traditional Hindu wedding rituals', imageUrl: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=1974&auto=format&fit=crop', count: 5 },
+  { id: '4', title: 'Vastu & Consultation', description: 'Vastu analysis and remedies', imageUrl: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?q=80&w=2070&auto=format&fit=crop', count: 3 },
+];

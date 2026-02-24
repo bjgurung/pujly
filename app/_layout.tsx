@@ -75,7 +75,7 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
   const { isAuthenticated, isHydrated, token } = useAuthStore();
-  const hasNavigated = useRef(false);
+  const [isLayoutReady, setIsLayoutReady] = useState(false);
 
   useEffect(() => {
     setAuthTokenGetter(() => useAuthStore.getState().token);
@@ -84,8 +84,8 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    if (!isHydrated) {
-      console.log('[Auth] Waiting for store hydration...');
+    if (!isHydrated || !isLayoutReady) {
+      console.log('[Auth] Waiting...', { isHydrated, isLayoutReady });
       return;
     }
 
@@ -95,11 +95,9 @@ function RootLayoutNav() {
     try {
       if (!isAuthenticated && !inAuthGroup) {
         console.log('[Auth] Not authenticated, redirecting to welcome');
-        hasNavigated.current = true;
         router.replace('/(auth)/welcome' as any);
       } else if (isAuthenticated && inAuthGroup) {
         console.log('[Auth] Authenticated, redirecting to home');
-        hasNavigated.current = true;
         router.replace('/(tabs)/(home)' as any);
       } else if (isAuthenticated && !inAuthGroup) {
         console.log('[Auth] Authenticated and on correct route:', segments.join('/'));
@@ -107,18 +105,11 @@ function RootLayoutNav() {
     } catch (e) {
       console.error('[Auth] Navigation error:', e);
     }
-  }, [isAuthenticated, isHydrated, segments]);
-
-  if (!isHydrated) {
-    return (
-      <View style={loadingStyles.container}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  }, [isAuthenticated, isHydrated, isLayoutReady, segments]);
 
   return (
     <AppErrorBoundary>
+    <View style={{ flex: 1 }} onLayout={() => setIsLayoutReady(true)}>
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.white },
@@ -163,6 +154,7 @@ function RootLayoutNav() {
       <Stack.Screen name="store/products" options={{ title: "Products" }} />
       <Stack.Screen name="store/category/[id]" options={{ title: "Category" }} />
     </Stack>
+    </View>
     </AppErrorBoundary>
   );
 }

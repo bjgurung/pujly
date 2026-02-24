@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState, useRef } from "react";
-import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient, setAuthTokenGetter } from "@/lib/trpc";
@@ -118,18 +118,17 @@ function RootLayoutNav() {
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="pandit/[id]" options={{ title: "Pandit Details" }} />
-      <Stack.Screen name="service/[id]" options={{ title: "Service Details" }} />
-      <Stack.Screen name="category/[id]" options={{ title: "Category" }} />
-      <Stack.Screen name="booking/[id]" options={{ title: "Booking Details" }} />
-      <Stack.Screen name="booking/create" options={{ title: "Book Service" }} />
-      <Stack.Screen name="chat/[id]" options={{ title: "Chat" }} />
-      <Stack.Screen name="product/[id]" options={{ title: "Product Details" }} />
+      <Stack.Screen name="pandit" options={{ headerShown: false }} />
+      <Stack.Screen name="service" options={{ headerShown: false }} />
+      <Stack.Screen name="category" options={{ headerShown: false }} />
+      <Stack.Screen name="booking" options={{ headerShown: false }} />
+      <Stack.Screen name="chat" options={{ headerShown: false }} />
+      <Stack.Screen name="product" options={{ headerShown: false }} />
       <Stack.Screen name="cart" options={{ title: "Cart" }} />
       <Stack.Screen name="checkout" options={{ title: "Checkout" }} />
       <Stack.Screen name="order-success" options={{ headerShown: false }} />
       <Stack.Screen name="orders" options={{ title: "My Orders" }} />
-      <Stack.Screen name="order/[id]" options={{ title: "Order Details" }} />
+      <Stack.Screen name="order" options={{ headerShown: false }} />
       <Stack.Screen name="wishlist" options={{ title: "Wishlist" }} />
       <Stack.Screen name="pandit-profile" options={{ title: "My Profile" }} />
       <Stack.Screen name="pandit-services" options={{ title: "My Services" }} />
@@ -143,13 +142,10 @@ function RootLayoutNav() {
       <Stack.Screen name="help-support" options={{ title: "Help & Support" }} />
       <Stack.Screen name="privacy-policy" options={{ title: "Privacy Policy" }} />
       <Stack.Screen name="terms-of-service" options={{ title: "Terms of Service" }} />
-      <Stack.Screen name="address/select" options={{ title: "Select Address" }} />
-      <Stack.Screen name="address/add" options={{ title: "Add Address" }} />
-      <Stack.Screen name="address/edit" options={{ title: "Edit Address" }} />
+      <Stack.Screen name="address" options={{ headerShown: false }} />
       <Stack.Screen name="admin" options={{ headerShown: false }} />
       <Stack.Screen name="pandit-onboarding" options={{ headerShown: false }} />
-      <Stack.Screen name="store/products" options={{ title: "Products" }} />
-      <Stack.Screen name="store/category/[id]" options={{ title: "Category" }} />
+      <Stack.Screen name="store" options={{ headerShown: false }} />
     </Stack>
     </View>
     </AppErrorBoundary>

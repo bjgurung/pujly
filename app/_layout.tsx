@@ -93,14 +93,11 @@ function RootLayoutNav() {
     console.log('[Auth] Navigation guard - isAuthenticated:', isAuthenticated, 'inAuthGroup:', inAuthGroup, 'segments:', JSON.stringify(segments));
 
     try {
-      if (!isAuthenticated && !inAuthGroup) {
-        console.log('[Auth] Not authenticated, redirecting to welcome');
-        router.replace('/(auth)/welcome' as any);
-      } else if (isAuthenticated && inAuthGroup) {
+      if (isAuthenticated && inAuthGroup) {
         console.log('[Auth] Authenticated, redirecting to home');
         router.replace('/(tabs)/(home)' as any);
-      } else if (isAuthenticated && !inAuthGroup) {
-        console.log('[Auth] Authenticated and on correct route:', segments.join('/'));
+      } else {
+        console.log('[Auth] On route:', segments.join('/'), '| authenticated:', isAuthenticated);
       }
     } catch (e) {
       console.error('[Auth] Navigation error:', e);

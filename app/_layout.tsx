@@ -1,12 +1,12 @@
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { trpc, trpcClient } from "@/lib/trpc";
+import { trpc, trpcClient, setAuthTokenGetter } from "@/lib/trpc";
 import { colors } from "@/constants/colors";
-import { useAuthStore } from "@/store/auth-store";
+import { useAuthStore, setTrpcClientRef } from "@/store/auth-store";
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -74,15 +74,13 @@ class AppErrorBoundary extends React.Component<
 function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
-  const { isAuthenticated, isHydrated } = useAuthStore();
-  const [isNavigationReady, setIsNavigationReady] = useState(false);
+  const { isAuthenticated, isHydrated, token } = useAuthStore();
+  const hasNavigated = useRef(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      console.log('[Auth] Navigation ready (timer)');
-      setIsNavigationReady(true);
-    }, 100);
-    return () => clearTimeout(timer);
+    setAuthTokenGetter(() => useAuthStore.getState().token);
+    setTrpcClientRef(trpcClient);
+    console.log('[Auth] Token getter and tRPC client registered');
   }, []);
 
   useEffect(() => {
@@ -91,22 +89,25 @@ function RootLayoutNav() {
       return;
     }
 
-    if (!isNavigationReady) {
-      console.log('[Auth] Waiting for navigation to be ready...');
-      return;
-    }
-
     const inAuthGroup = (segments[0] as string) === '(auth)';
-    console.log('[Auth] Navigation guard - isAuthenticated:', isAuthenticated, 'inAuthGroup:', inAuthGroup, 'segments:', segments);
+    console.log('[Auth] Navigation guard - isAuthenticated:', isAuthenticated, 'inAuthGroup:', inAuthGroup, 'segments:', JSON.stringify(segments));
 
-    if (!isAuthenticated && !inAuthGroup) {
-      console.log('[Auth] Not authenticated, redirecting to welcome');
-      router.replace('/(auth)/welcome' as any);
-    } else if (isAuthenticated && inAuthGroup) {
-      console.log('[Auth] Authenticated, redirecting to home');
-      router.replace('/(tabs)/(home)' as any);
+    try {
+      if (!isAuthenticated && !inAuthGroup) {
+        console.log('[Auth] Not authenticated, redirecting to welcome');
+        hasNavigated.current = true;
+        router.replace('/(auth)/welcome' as any);
+      } else if (isAuthenticated && inAuthGroup) {
+        console.log('[Auth] Authenticated, redirecting to home');
+        hasNavigated.current = true;
+        router.replace('/(tabs)/(home)' as any);
+      } else if (isAuthenticated && !inAuthGroup) {
+        console.log('[Auth] Authenticated and on correct route:', segments.join('/'));
+      }
+    } catch (e) {
+      console.error('[Auth] Navigation error:', e);
     }
-  }, [isAuthenticated, isHydrated, isNavigationReady, segments]);
+  }, [isAuthenticated, isHydrated, segments]);
 
   if (!isHydrated) {
     return (

@@ -49,7 +49,10 @@ export default function LoginScreen() {
     try {
       console.log('[Login] Starting Google sign-in...');
       await googleSignIn(accessToken, 'user');
-      console.log('[Login] Google sign-in succeeded, navigation guard will redirect');
+      console.log('[Login] Google sign-in succeeded, navigating to home');
+      setTimeout(() => {
+        router.replace('/(tabs)/(home)' as any);
+      }, 100);
     } catch (e) {
       console.error('[Login] Google sign-in error:', e);
       Alert.alert('Error', 'Google sign-in failed. Please try again.');
@@ -66,7 +69,10 @@ export default function LoginScreen() {
     try {
       console.log('[Login] Starting email login...');
       await login(email, password);
-      console.log('[Login] Email login succeeded, navigation guard will redirect');
+      console.log('[Login] Email login succeeded, navigating to home');
+      setTimeout(() => {
+        router.replace('/(tabs)/(home)' as any);
+      }, 100);
     } catch (e) {
       console.error('[Login] Email login error:', e);
       Alert.alert('Error', 'Login failed. Please try again.');

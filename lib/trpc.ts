@@ -1,7 +1,6 @@
 import { httpLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import superjson from "superjson";
-import { useAuthStore } from "@/store/auth-store"; // 
 
 import type { AppRouter } from "@/backend/trpc/app-router";
 
@@ -18,14 +17,19 @@ const getBaseUrl = () => {
   return url;
 };
 
+let getAuthToken: (() => string | null) | null = null;
+
+export function setAuthTokenGetter(getter: () => string | null) {
+  getAuthToken = getter;
+}
+
 export const trpcClient = trpc.createClient({
   links: [
     httpLink({
       url: `${getBaseUrl()}/api/trpc`,
       transformer: superjson,
-      // Dynamically inject the token for every request
       async headers() {
-        const token = useAuthStore.getState().token; // 
+        const token = getAuthToken ? getAuthToken() : null;
         return {
           Authorization: token ? `Bearer ${token}` : undefined,
         };

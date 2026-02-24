@@ -4,6 +4,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 let trpcClientRef: any = null;
 
+export const setTrpcClientRef = (client: any) => {
+  trpcClientRef = client;
+  console.log('[Auth] tRPC client ref set');
+};
+
 const getTrpcClient = () => {
   if (!trpcClientRef) {
     try {

@@ -54,10 +54,14 @@ export default function RegisterScreen() {
     try {
       console.log('[Register] Starting Google sign-in with role:', selectedRole);
       await googleSignIn(accessToken, selectedRole);
-      console.log('[Register] Google sign-in succeeded, navigation guard will redirect');
-      if (selectedRole === 'pandit') {
-        router.replace('/pandit-onboarding' as any);
-      }
+      console.log('[Register] Google sign-in succeeded, navigating');
+      setTimeout(() => {
+        if (selectedRole === 'pandit') {
+          router.replace('/pandit-onboarding' as any);
+        } else {
+          router.replace('/(tabs)/(home)' as any);
+        }
+      }, 100);
     } catch (e) {
       console.error('[Register] Google sign-in error:', e);
       Alert.alert('Error', 'Google sign-in failed. Please try again.');
@@ -80,10 +84,14 @@ export default function RegisterScreen() {
         password,
         role: selectedRole,
       });
-      console.log('[Register] Registration succeeded, navigation guard will redirect');
-      if (selectedRole === 'pandit') {
-        router.replace('/pandit-onboarding' as any);
-      }
+      console.log('[Register] Registration succeeded, navigating');
+      setTimeout(() => {
+        if (selectedRole === 'pandit') {
+          router.replace('/pandit-onboarding' as any);
+        } else {
+          router.replace('/(tabs)/(home)' as any);
+        }
+      }, 100);
     } catch (e) {
       console.error('[Register] Registration error:', e);
       Alert.alert('Error', 'Registration failed. Please try again.');

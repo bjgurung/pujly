@@ -14,18 +14,25 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pujly.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.pujly.app"
     },
     "plugins": [
       "expo-router",
       "expo-font"
     ],
+    "extra": {
+      "eas": {
+        "projectId": "pujly-app"
+      }
+    },
     "experiments": {
       "typedRoutes": true
     }

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { trpc, trpcClient, setAuthTokenGetter } from "@/lib/trpc";
+import { trpcClient, setAuthTokenGetter } from "@/lib/trpc";
 import { colors } from "@/constants/colors";
 import { useAuthStore, setTrpcClientRef } from "@/store/auth-store";
 
@@ -22,12 +22,10 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <StatusBar style="dark" />
-        <RootLayoutNav />
-      </QueryClientProvider>
-    </trpc.Provider>
+    <QueryClientProvider client={queryClient}>
+      <StatusBar style="dark" />
+      <RootLayoutNav />
+    </QueryClientProvider>
   );
 }
 

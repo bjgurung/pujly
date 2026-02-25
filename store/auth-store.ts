@@ -80,7 +80,7 @@ export const useAuthStore = create<AuthState>()(
           console.log('[Auth] Login success:', result.user.email);
           const user: User = {
             ...result.user,
-            location: 'Delhi NCR',
+            location: 'United States',
           };
           set({
             user,
@@ -114,7 +114,7 @@ export const useAuthStore = create<AuthState>()(
           const user: User = {
             ...result.user,
             phone: data.phone,
-            location: 'Delhi NCR',
+            location: 'United States',
           };
           set({
             user,
@@ -144,7 +144,7 @@ export const useAuthStore = create<AuthState>()(
           console.log('[Auth] Google sign-in success:', result.user.email);
           const user: User = {
             ...result.user,
-            location: 'Delhi NCR',
+            location: 'United States',
           };
           set({
             user,

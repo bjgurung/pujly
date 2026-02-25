@@ -55,7 +55,7 @@ export default function BookingDetailScreen() {
           <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
             <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
           </View>
-          <Text style={styles.price}>₹{booking.price.toLocaleString()}</Text>
+          <Text style={styles.price}>${booking.price.toLocaleString()}</Text>
         </View>
 
         <Text style={styles.serviceTitle}>{booking.serviceTitle}</Text>

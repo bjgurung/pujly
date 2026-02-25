@@ -12,7 +12,7 @@ export default function PanditProfileScreen() {
   const { user, updateUser } = useAuthStore();
   const [name, setName] = useState(user?.name || '');
   const [bio, setBio] = useState(user?.bio || 'Experienced pandit specializing in Vedic rituals and ceremonies.');
-  const [location, setLocation] = useState(user?.location || 'Delhi NCR');
+  const [location, setLocation] = useState(user?.location || 'United States');
   const [experience, setExperience] = useState('15');
   const [languages, setLanguages] = useState(user?.languages?.join(', ') || 'Hindi, Sanskrit, English');
   const [expertise, setExpertise] = useState(user?.expertise?.join(', ') || 'Wedding Ceremonies, Griha Pravesh, Satyanarayan Puja');

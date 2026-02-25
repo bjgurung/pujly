@@ -41,7 +41,7 @@ export default function PanditEarningsScreen() {
 
       <View style={styles.earningsCard}>
         <Text style={styles.earningsLabel}>Total Earnings</Text>
-        <Text style={styles.earningsAmount}>₹{data.total.toLocaleString()}</Text>
+        <Text style={styles.earningsAmount}>${data.total.toLocaleString()}</Text>
         <View style={styles.growthRow}>
           {data.growth >= 0 ? (
             <ArrowUpRight size={16} color={colors.success} />
@@ -62,7 +62,7 @@ export default function PanditEarningsScreen() {
         </View>
         <View style={styles.statCard}>
           <IndianRupee size={20} color={colors.gold} />
-          <Text style={styles.statValue}>₹{Math.round(data.total / Math.max(data.bookings, 1)).toLocaleString()}</Text>
+          <Text style={styles.statValue}>${Math.round(data.total / Math.max(data.bookings, 1)).toLocaleString()}</Text>
           <Text style={styles.statLabel}>Avg / Booking</Text>
         </View>
         <View style={styles.statCard}>
@@ -81,7 +81,7 @@ export default function PanditEarningsScreen() {
               <Text style={styles.txDate}>{tx.date}</Text>
             </View>
             <View style={styles.txRight}>
-              <Text style={styles.txAmount}>₹{tx.amount.toLocaleString()}</Text>
+              <Text style={styles.txAmount}>${tx.amount.toLocaleString()}</Text>
               <View style={[styles.txStatus, tx.status === 'completed' ? styles.txCompleted : styles.txPending]}>
                 <Text style={[styles.txStatusText, { color: tx.status === 'completed' ? colors.success : colors.warning }]}>
                   {tx.status === 'completed' ? 'Paid' : 'Pending'}

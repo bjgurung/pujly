@@ -32,7 +32,7 @@ export default function CartScreen() {
             <View style={styles.itemInfo}>
               <Text style={styles.itemName} numberOfLines={2}>{item.product.name}</Text>
               <Text style={styles.itemPrice}>
-                ₹{(item.product.discountedPrice || item.product.price).toLocaleString()}
+                ${(item.product.discountedPrice || item.product.price).toLocaleString()}
               </Text>
               <View style={styles.quantityRow}>
                 <TouchableOpacity
@@ -63,7 +63,7 @@ export default function CartScreen() {
       <View style={styles.footer}>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalPrice}>₹{total.toLocaleString()}</Text>
+          <Text style={styles.totalPrice}>${total.toLocaleString()}</Text>
         </View>
         <Button title="Proceed to Checkout" onPress={() => router.push('/checkout' as any)} size="large" />
       </View>

@@ -55,10 +55,10 @@ export default function ProductDetailScreen() {
         <Rating rating={product.rating} reviewCount={product.reviewCount} size={14} />
 
         <View style={styles.priceRow}>
-          <Text style={styles.price}>₹{(product.discountedPrice || product.price).toLocaleString()}</Text>
+          <Text style={styles.price}>${(product.discountedPrice || product.price).toLocaleString()}</Text>
           {product.discountedPrice && (
             <>
-              <Text style={styles.originalPrice}>₹{product.price.toLocaleString()}</Text>
+              <Text style={styles.originalPrice}>${product.price.toLocaleString()}</Text>
               <View style={styles.discountBadge}>
                 <Text style={styles.discountText}>
                   {Math.round(((product.price - product.discountedPrice) / product.price) * 100)}% OFF

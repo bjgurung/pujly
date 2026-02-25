@@ -35,7 +35,7 @@ export default function PanditServicesScreen() {
               <View style={styles.serviceMeta}>
                 <View style={styles.metaItem}>
                   <IndianRupee size={13} color={colors.primary} />
-                  <Text style={styles.metaText}>{service.price ? `₹${service.price.toLocaleString()}` : 'Quote'}</Text>
+                  <Text style={styles.metaText}>{service.price ? `$${service.price.toLocaleString()}` : 'Quote'}</Text>
                 </View>
                 <View style={styles.metaItem}>
                   <Clock size={13} color={colors.textMuted} />

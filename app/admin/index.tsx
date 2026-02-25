@@ -8,7 +8,7 @@ const stats = [
   { label: 'Total Users', value: '1,248', icon: <Users size={22} color={colors.primary} />, bg: colors.primaryLight },
   { label: 'Active Pandits', value: '86', icon: <CheckCircle size={22} color={colors.success} />, bg: colors.successLight },
   { label: 'Bookings Today', value: '24', icon: <BarChart3 size={22} color={colors.info} />, bg: colors.infoLight },
-  { label: 'Revenue (Month)', value: '₹4.2L', icon: <BarChart3 size={22} color={colors.gold} />, bg: colors.accentLight },
+  { label: 'Revenue (Month)', value: '$4.2L', icon: <BarChart3 size={22} color={colors.gold} />, bg: colors.accentLight },
 ];
 
 export default function AdminDashboardScreen() {

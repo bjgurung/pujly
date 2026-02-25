@@ -6,7 +6,9 @@
     "start": "bunx rork start -p {{projectId}} --tunnel",
     "start-web": "bunx rork start -p {{projectId}} --web --tunnel",
     "start-web-dev": "DEBUG=expo* bunx rork start -p {{projectId}} --web --tunnel",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@hono/trpc-server": "^0.4.2",

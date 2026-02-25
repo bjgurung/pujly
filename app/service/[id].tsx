@@ -47,7 +47,7 @@ export default function ServiceDetailScreen() {
         {service.price && (
           <View style={styles.priceCard}>
             <Text style={styles.priceLabel}>Starting from</Text>
-            <Text style={styles.price}>₹{service.price.toLocaleString()}</Text>
+            <Text style={styles.price}>${service.price.toLocaleString()}</Text>
           </View>
         )}
 

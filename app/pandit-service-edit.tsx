@@ -43,9 +43,9 @@ export default function PanditServiceEditScreen() {
           textAlignVertical="top"
         />
       </View>
-      <Input label="Price (₹)" placeholder="e.g., 5000" value={price} onChangeText={setPrice} keyboardType="number-pad" />
+      <Input label="Price ($)" placeholder="e.g., 5000" value={price} onChangeText={setPrice} keyboardType="number-pad" />
       <Input label="Duration (minutes)" placeholder="e.g., 120" value={duration} onChangeText={setDuration} keyboardType="number-pad" />
-      <Input label="Location" placeholder="e.g., Delhi NCR" value={location} onChangeText={setLocation} />
+      <Input label="Location" placeholder="e.g., United States" value={location} onChangeText={setLocation} />
       <Button title={id ? 'Update Service' : 'Create Service'} onPress={handleSave} size="large" style={styles.saveBtn} />
     </ScrollView>
   );

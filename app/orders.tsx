@@ -52,7 +52,7 @@ export default function OrdersScreen() {
             <View style={styles.orderFooter}>
               <Text style={styles.itemCount}>{order.items.length} item(s)</Text>
               <View style={styles.orderTotal}>
-                <Text style={styles.totalText}>₹{order.total.toLocaleString()}</Text>
+                <Text style={styles.totalText}>${order.total.toLocaleString()}</Text>
                 <ChevronRight size={16} color={colors.textMuted} />
               </View>
             </View>

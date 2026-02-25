@@ -37,13 +37,13 @@ export default function OrderDetailScreen() {
             <Text style={styles.itemName} numberOfLines={1}>{item.product.name}</Text>
             <Text style={styles.itemQty}>x{item.quantity}</Text>
             <Text style={styles.itemPrice}>
-              ₹{((item.product.discountedPrice || item.product.price) * item.quantity).toLocaleString()}
+              ${((item.product.discountedPrice || item.product.price) * item.quantity).toLocaleString()}
             </Text>
           </View>
         ))}
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>₹{order.total.toLocaleString()}</Text>
+          <Text style={styles.totalValue}>${order.total.toLocaleString()}</Text>
         </View>
       </View>
 

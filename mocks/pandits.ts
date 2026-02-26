@@ -18,7 +18,7 @@ export const pandits: Pandit[] = [
     id: '1',
     name: 'Pandit Ramesh Sharma',
     imageUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1974&auto=format&fit=crop',
-    specialization: 'Wedding Ceremonies',
+    specialization: 'Vedic Rituals & Ceremonies',
     location: 'New York, USA',
     languages: ['Hindi', 'Sanskrit', 'English'],
     rating: 4.8,

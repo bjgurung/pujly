@@ -7,6 +7,14 @@ export const colors = {
   secondaryDark: '#1B4332',
   secondaryLight: '#E8F5EE',
 
+  // Sacred Saffron Palette
+  saffron: '#FF9933',
+  saffronLight: '#FFB347',
+  saffronDark: '#FF8C00',
+  saffronGold: '#FFD700',
+  saffronCream: '#FFF8F0',
+  saffronRose: '#FFE4CC',
+
   accent: '#D4A017',
   accentLight: '#FFF8E1',
 

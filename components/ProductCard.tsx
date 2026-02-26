@@ -44,9 +44,9 @@ export default function ProductCard({ product, onPress, onWishlist, isWishlisted
         <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
         <Rating rating={product.rating} reviewCount={product.reviewCount} size={11} />
         <View style={styles.priceRow}>
-          <Text style={styles.price}>₹{(product.discountedPrice || product.price).toLocaleString()}</Text>
+          <Text style={styles.price}>${(product.discountedPrice || product.price).toLocaleString()}</Text>
           {product.discountedPrice && (
-            <Text style={styles.originalPrice}>₹{product.price.toLocaleString()}</Text>
+            <Text style={styles.originalPrice}>${product.price.toLocaleString()}</Text>
           )}
         </View>
       </View>

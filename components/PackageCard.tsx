@@ -27,9 +27,9 @@ export default function PackageCard({ pkg, onPress }: PackageCardProps) {
           <View style={styles.priceRow}>
             {pkg.price ? (
               <>
-                <Text style={styles.price}>₹{pkg.price.toLocaleString()}</Text>
+                <Text style={styles.price}>${pkg.price.toLocaleString()}</Text>
                 {pkg.originalPrice && (
-                  <Text style={styles.originalPrice}>₹{pkg.originalPrice.toLocaleString()}</Text>
+                  <Text style={styles.originalPrice}>${pkg.originalPrice.toLocaleString()}</Text>
                 )}
               </>
             ) : (

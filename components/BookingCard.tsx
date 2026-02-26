@@ -41,7 +41,7 @@ export default function BookingCard({ booking, onPress }: BookingCardProps) {
             <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
           </View>
         </View>
-        <Text style={styles.price}>₹{booking.price.toLocaleString()}</Text>
+        <Text style={styles.price}>${booking.price.toLocaleString()}</Text>
       </View>
 
       <View style={styles.panditRow}>

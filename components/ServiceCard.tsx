@@ -33,7 +33,7 @@ export default function ServiceCard({ service, onPress, horizontal }: ServiceCar
           <View style={styles.bottomRow}>
             <Rating rating={service.rating} reviewCount={service.reviewCount} size={12} />
             {service.price && (
-              <Text style={styles.price}>₹{service.price.toLocaleString()}</Text>
+              <Text style={styles.price}>${service.price.toLocaleString()}</Text>
             )}
           </View>
         </View>
@@ -53,7 +53,7 @@ export default function ServiceCard({ service, onPress, horizontal }: ServiceCar
         <View style={styles.bottomRow}>
           <Rating rating={service.rating} size={12} showCount={false} />
           {service.price && (
-            <Text style={styles.price}>₹{service.price.toLocaleString()}</Text>
+            <Text style={styles.price}>${service.price.toLocaleString()}</Text>
           )}
         </View>
       </View>
